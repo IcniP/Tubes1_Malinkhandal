@@ -25,6 +25,18 @@ class GreedyBot(BaseLogic):
                 return dx, dy
             return None
 
+        def predict_enemy_target(bot: GameObject) -> Optional[Position]:
+            d = bot.properties.diamonds
+            if d >= 5:
+                return bot.properties.base  # balik ke base
+            elif 3 <= d < 5:
+                red_diamonds = [d for d in board.diamonds if d.type == "RedDiamondGameObject"]
+                blue_diamonds = [d for d in board.diamonds if d.type != "RedDiamondGameObject"]
+                all_diamonds = red_diamonds + blue_diamonds
+                if all_diamonds:
+                    return min(all_diamonds, key=lambda x: distance(bot.position, x.position)).position
+            return None
+
         # Hindari tabrakan dengan musuh saat pulang
         enemy_positions = {
             (bot.position.x, bot.position.y)
@@ -46,7 +58,6 @@ class GreedyBot(BaseLogic):
             move = try_move(board_bot.properties.base.x, board_bot.properties.base.y, avoid_positions=enemy_positions)
             if move:
                 return move
-            # Coba arah lain yang lebih dekat ke base tapi aman
             target = board_bot.properties.base
             safe_moves = []
             for dx, dy in self.directions:
@@ -62,21 +73,18 @@ class GreedyBot(BaseLogic):
             if safe_moves:
                 return random.choice(safe_moves)
 
-        # 2. Kejar player (hanya jika diamond <= 3)
-        if diamonds <= 3:
-            enemy_bots = [
-                other for other in board.bots
-                if other.properties.name != board_bot.properties.name and other.properties.diamonds > 0
-            ]
-            if enemy_bots:
-                enemy_bots.sort(key=lambda b: (-b.properties.diamonds, distance(board_bot.position, b.position)))
-                for enemy in enemy_bots:
-                    if distance(board_bot.position, enemy.position) <= 5:
-                        move = try_move(enemy.position.x, enemy.position.y)
-                        if move:
-                            return move
+        # 2. Prediksi pergerakan musuh & potong jalur
+        for enemy in board.bots:
+            if enemy.properties.name == board_bot.properties.name:
+                continue
+            if enemy.properties.diamonds >= 5 or (3 <= enemy.properties.diamonds < 5):
+                target = predict_enemy_target(enemy)
+                if target and distance(board_bot.position, target) <= 6:
+                    move = try_move(target.x, target.y)
+                    if move:
+                        return move
 
-        # 3. Cari diamond terdekat, red hanya jika memang paling dekat
+        # 3. Cari diamond terdekat (red hanya jika paling dekat)
         if board.diamonds:
             red_diamonds = [d for d in board.diamonds if d.type == "RedDiamondGameObject"]
             blue_diamonds = [d for d in board.diamonds if d.type != "RedDiamondGameObject"]
@@ -84,7 +92,6 @@ class GreedyBot(BaseLogic):
             nearest_red = min(red_diamonds, key=lambda d: distance(board_bot.position, d.position), default=None)
             nearest_blue = min(blue_diamonds, key=lambda d: distance(board_bot.position, d.position), default=None)
 
-            # Ambil red hanya jika dia paling dekat
             if nearest_red and (not nearest_blue or distance(board_bot.position, nearest_red.position) <= distance(board_bot.position, nearest_blue.position)):
                 move = try_move(nearest_red.position.x, nearest_red.position.y)
                 if move:
@@ -94,7 +101,7 @@ class GreedyBot(BaseLogic):
                 if move:
                     return move
 
-        # 4. Roaming (kalem, tidak muter-muter bodoh)
+        # 4. Roaming
         for i in range(len(self.directions)):
             dx, dy = self.directions[self.current_direction]
             if board.is_valid_move(board_bot.position, dx, dy):
@@ -104,7 +111,7 @@ class GreedyBot(BaseLogic):
             else:
                 self.current_direction = (self.current_direction + 1) % len(self.directions)
 
-        # 5. Gerak random valid radius 2–3 (bantu keluar dari situasi stuck)
+        # 5. Radius backup gerakan
         for radius in range(2, 4):
             offsets = [(dx, dy) for dx in range(-radius, radius+1)
                                  for dy in range(-radius, radius+1)
@@ -114,5 +121,5 @@ class GreedyBot(BaseLogic):
                 if board.is_valid_move(board_bot.position, dx, dy):
                     return dx, dy
 
-        # 6. Fail-safe arah acak
+        # 6. Arah acak
         return random.choice(self.directions)
