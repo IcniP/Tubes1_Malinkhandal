@@ -1,138 +1,154 @@
-import random
-from typing import Optional
 from game.logic.base import BaseLogic
-from game.models import GameObject, Board, Position
+from game.models import Board, GameObject, Position
+from typing import Optional
 from game.util import get_direction
-
-
-# Muhammad Farisi Suyitno 123140152
-# Ali Akbar
-# Bima aryaseta
-
-
-#Kelompok 5 (malink handal)
-
+import random
+import math
 
 class GreedyBot(BaseLogic):
     def __init__(self):
-        super().__init__()
         self.directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
+        self.goal_position: Optional[Position] = None
         self.current_direction = 0
+        self.chased_timer = 0
+        self.last_position: Optional[Position] = None
+        self.run = 0
+        self.diamound_counter_cd = 0
+        self.stuck_counter = 0
 
     def next_move(self, board_bot: GameObject, board: Board):
-        def distance(a, b):
-            return abs(a.x - b.x) + abs(a.y - b.y)
+        props = board_bot.properties
+        current_position = board_bot.position
+        all_bots = board.bots
+        diamonds = board.diamonds
 
-        def try_move(target_x, target_y, avoid_positions=None):
-            dx, dy = get_direction(board_bot.position.x, board_bot.position.y, target_x, target_y)
-            next_x = board_bot.position.x + dx
-            next_y = board_bot.position.y + dy
-            if board.is_valid_move(board_bot.position, dx, dy):
-                if avoid_positions and (next_x, next_y) in avoid_positions:
-                    return None
-                return dx, dy
-            return None
+        def count_near_diamond_target(center: Position, radius: int = 3) -> int:
+            return sum(
+                1 for d in diamonds
+                if abs(d.position.x - center.x) + abs(d.position.y - center.y) <= radius
+            )
 
-        def predict_enemy_target(bot: GameObject) -> Optional[Position]:
-            d = bot.properties.diamonds
-            if d >= 5:
-                return bot.properties.base  # balik ke base
-            elif 3 <= d < 5:
-                red_diamonds = [d for d in board.diamonds if d.type == "RedDiamondGameObject"]
-                blue_diamonds = [d for d in board.diamonds if d.type != "RedDiamondGameObject"]
-                all_diamonds = red_diamonds + blue_diamonds
-                if all_diamonds:
-                    return min(all_diamonds, key=lambda x: distance(bot.position, x.position)).position
-            return None
+        def distance(pos1: Position, pos2: Position) -> int:
+            return math.hypot(pos1.x - pos2.x, pos1.y - pos2.y)
 
-        # menghindar dari musuh jika diamond penuh
-        enemy_positions = {
-            (bot.position.x, bot.position.y)
-            for bot in board.bots
-            if bot.properties.name != board_bot.properties.name
-        }
+        def steal(radius: int = 2):
+            return [
+                bot for bot in all_bots
+                if bot.id != board_bot.id and
+                abs(bot.position.x - current_position.x) + abs(bot.position.y - current_position.y) <= radius
+            ]
 
-        diamonds = board_bot.properties.diamonds
-        time_left = board_bot.properties.milliseconds_left
+        nearby_bots = steal(radius=2)
+        self.chased_timer = self.chased_timer + 1 if nearby_bots else 0
 
-        # kalau waktu game mau abis balik ke base
-        if time_left is not None and time_left < 1500:
-            move = try_move(board_bot.properties.base.x, board_bot.properties.base.y)
-            if move:
-                return move
+        if self.diamound_counter_cd > 0:
+            self.diamound_counter_cd -= 1
 
-        # balik ke base kalo diamond 4
-        if diamonds == 4:
-            move = try_move(board_bot.properties.base.x, board_bot.properties.base.y, avoid_positions=enemy_positions)
-            if move:
-                return move
-            target = board_bot.properties.base
-            safe_moves = []
-            for dx, dy in self.directions:
-                next_x = board_bot.position.x + dx
-                next_y = board_bot.position.y + dy
-                if (next_x, next_y) in enemy_positions:
-                    continue
-                if board.is_valid_move(board_bot.position, dx, dy):
-                    new_dist = distance(target, type('P', (), {'x': next_x, 'y': next_y}))
-                    curr_dist = distance(target, board_bot.position)
-                    if new_dist < curr_dist:
-                        safe_moves.append((dx, dy))
-            if safe_moves:
-                return random.choice(safe_moves)
+        if self.last_position == current_position:
+            self.stuck_counter += 1
+        else:
+            self.stuck_counter = 0
+        self.last_position = current_position
 
-        # prediksi gerakan musuh
-        for enemy in board.bots:
-            if enemy.properties.name == board_bot.properties.name:
-                continue
-            if enemy.properties.diamonds >= 5 or (3 <= enemy.properties.diamonds < 5):
-                target = predict_enemy_target(enemy)
-                if target and distance(board_bot.position, target) <= 6:
-                    move = try_move(target.x, target.y)
-                    if move:
-                        return move
-
-        # cari dimaond terdekat utamain merah
-        if board.diamonds:
-            red_diamonds = [d for d in board.diamonds if d.type == "RedDiamondGameObject"]
-            blue_diamonds = [d for d in board.diamonds if d.type != "RedDiamondGameObject"]
-
-            nearest_red = min(red_diamonds, key=lambda d: distance(board_bot.position, d.position), default=None)
-            nearest_blue = min(blue_diamonds, key=lambda d: distance(board_bot.position, d.position), default=None)
-
-            if nearest_red and (not nearest_blue or distance(board_bot.position, nearest_red.position) <= distance(board_bot.position, nearest_blue.position)):
-                move = try_move(nearest_red.position.x, nearest_red.position.y)
-                if move:
-                    return move
-            elif nearest_blue:
-                move = try_move(nearest_blue.position.x, nearest_blue.position.y)
-                if move:
-                    return move
-
-        # jalan jalan kalo gaada target
-        for i in range(len(self.directions)):
-            dx, dy = self.directions[self.current_direction]
-            if board.is_valid_move(board_bot.position, dx, dy):
-                if random.random() > 0.7:
-                    self.current_direction = (self.current_direction + 1) % len(self.directions)
-                return dx, dy
+        if self.stuck_counter >= 2:
+            self.goal_position = None
+            self.current_direction = (self.current_direction + 1) % len(self.directions)
+            delta_x, delta_y = self.directions[self.current_direction]
+            if board.is_valid_move(current_position, delta_x, delta_y):
+                return delta_x, delta_y
             else:
-                self.current_direction = (self.current_direction + 1) % len(self.directions)
+                return 0, 0
 
-        # backup
-        for radius in range(2, 4):
-            offsets = [(dx, dy) for dx in range(-radius, radius+1)
-                                 for dy in range(-radius, radius+1)
-                                 if (dx != 0 or dy != 0) and abs(dx) != abs(dy)]
-            random.shuffle(offsets)
-            for dx, dy in offsets:
-                if board.is_valid_move(board_bot.position, dx, dy):
-                    return dx, dy
+        if self.chased_timer >= 5:
+            base = props.base
+            self.goal_position = base
+            delta_x, delta_y = get_direction(current_position.x, current_position.y, base.x, base.y)
+            if board.is_valid_move(current_position, delta_x, delta_y):
+                return delta_x, delta_y
+            else:
+                return 0, 0
 
-        # gerak random kalau bener bener gaada apa apa
-        for _ in range(4):
-            dx, dy = random.choice(self.directions)
-            if board.is_valid_move(board_bot.position, dx, dy):
-                return dx, dy
+        if props.diamonds >= 4:
+            base = props.base
+            if nearby_bots and self.run <= 2:
+                closest = min(nearby_bots, key=lambda b: distance(current_position, b.position))
+                dx = current_position.x - closest.position.x
+                dy = current_position.y - closest.position.y
+                dodge_x = 1 if dx >= 0 else -1
+                dodge_y = 1 if dy >= 0 else -1
+                self.goal_position = Position(
+                    min(max(0, base.x + dodge_x), board.width - 1),
+                    min(max(0, base.y + dodge_y), board.height - 1),
+                )
+                self.run += 1
+            else:
+                self.goal_position = base
+                self.run += 1
+                if self.run >= 5:
+                    self.run = 0
+            delta_x, delta_y = get_direction(current_position.x, current_position.y, self.goal_position.x, self.goal_position.y)
+            if board.is_valid_move(current_position, delta_x, delta_y):
+                return delta_x, delta_y
+            else:
+                return 0, 0
+
+        enemy_carry_diamond = [
+            bot for bot in all_bots
+            if bot.id != board_bot.id
+            and bot.properties.diamonds >= 2
+            and distance(current_position, bot.position) <= 4
+        ]
+
+        if enemy_carry_diamond:
+            target = max(enemy_carry_diamond, key=lambda b: b.properties.diamonds)
+            if target.position != props.base:
+                self.goal_position = target.position
+                delta_x, delta_y = get_direction(current_position.x, current_position.y, self.goal_position.x, self.goal_position.y)
+                if board.is_valid_move(current_position, delta_x, delta_y):
+                    return delta_x, delta_y
+                else:
+                    return 0, 0
+
+        if self.diamound_counter_cd == 0:
+            candidate_diamonds = [d for d in diamonds if distance(current_position, d.position) <= 5]
+            best_diamond = max(
+                candidate_diamonds,
+                key=lambda d: (
+                    count_near_diamond_target(d.position, radius=2),
+                    -distance(current_position, d.position)
+                ),
+                default=None
+            )
+            if best_diamond:
+                self.goal_position = best_diamond.position
+            elif diamonds:
+                nearest = min(diamonds, key=lambda d: distance(current_position, d.position))
+                self.goal_position = nearest.position
+            else:
+                self.goal_position = None
+
+        elif self.diamound_counter_cd > 0:
+            close_diamonds = [d for d in diamonds if distance(current_position, d.position) <= 2]
+            if close_diamonds:
+                nearest = min(close_diamonds, key=lambda d: distance(current_position, d.position))
+                self.goal_position = nearest.position
+
+        if self.goal_position and self.goal_position != current_position:
+            delta_x, delta_y = get_direction(current_position.x, current_position.y, self.goal_position.x, self.goal_position.y)
+            if board.is_valid_move(current_position, delta_x, delta_y):
+                if self.goal_position == current_position:
+                    self.diamound_counter_cd = 4
+                return delta_x, delta_y
+            else:
+                return 0, 0
+        else:
+            for _ in range(4):
+                delta_x, delta_y = self.directions[self.current_direction]
+                if board.is_valid_move(current_position, delta_x, delta_y):
+                    if random.random() > 0.6:
+                        self.current_direction = (self.current_direction + 1) % len(self.directions)
+                    return delta_x, delta_y
+                else:
+                    self.current_direction = (self.current_direction + 1) % len(self.directions)
 
         return 0, 0
