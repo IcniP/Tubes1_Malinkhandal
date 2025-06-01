@@ -1,4 +1,74 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+#💎 GreedyBot – Etimo Diamond Bot
+i. Penjelasan Singkat Algoritma Greedy
+Bot ini mengimplementasikan algoritma Greedy, yaitu strategi yang selalu memilih langkah terbaik di setiap keputusan berdasarkan kondisi saat itu, tanpa mempertimbangkan konsekuensi jangka panjang.
+GreedyBot akan:
+
+Mengejar diamond terdekat yang paling ramai (menggunakan radius cluster)
+
+Langsung pulang ke base saat diamond mencapai 4 atau lebih
+
+Menghindar jika dikejar musuh (menggunakan counter waktu)
+
+Melakukan fallback aman jika terjebak (tidak bisa bergerak)
+
+Strategi ini cocok digunakan di game Etimo Diamond karena mengutamakan efisiensi rute dan penghindaran risiko untuk memperoleh skor secara cepat dan aman.
+
+ii. Requirement Program dan Instalasi
+Program ini dibangun menggunakan Python. Pastikan Python 3.8 atau lebih tinggi sudah terinstal di sistem.
+
+Install dependency yang dibutuhkan:
+
+bash
+Copy code
+pip install -r requirements.txt
+File requirements.txt berisi:
+
+nginx
+Copy code
+colorama
+requests
+dacite
+iii. Cara Menjalankan Bot
+Clone repository:
+
+bash
+Copy code
+git clone https://github.com/namaproject/etimo-greedybot.git
+cd etimo-greedybot
+Install dependencies:
+
+bash
+Copy code
+pip install -r requirements.txt
+Jalankan bot (mode multi-bot - Linux/Mac):
+
+bash
+Copy code
+chmod +x run-bots.sh
+./run-bots.sh
+Atau jalankan satu bot saja:
+
+bash
+Copy code
+python main.py --logic GreedyBot --email=test@email.com --name=malinkhandal --password=123456 --team etimo
+Untuk Windows, bisa menggunakan run-bots.bat:
+
+cmd
+Copy code
+run-bots.bat
+Pastikan nama dan email setiap bot unik.
+
+iv. Author
+Muhammad Farisi Suyitno 123140152
+Ali Akbar 123140162
+Bima Aryaseta 123140177
+Institut Teknologi Sumatera
+Mata Kuliah: Strategi Algoritma (IF2211)
+
+
+
+
 
 # 💎 Etimo Diamonds 2
 
