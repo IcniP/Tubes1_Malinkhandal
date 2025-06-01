@@ -1,5 +1,8 @@
 import random
 from typing import Optional
+from datetime import datetime  # Tambahan
+import os  # Tambahan
+
 from game.logic.base import BaseLogic
 from game.models import GameObject, Board, Position
 from game.util import get_direction
@@ -8,13 +11,14 @@ from game.util import get_direction
 # Ali Akbar 
 # Bima aryaseta
 
-#Kelompok 5 (malink handal)
+# Kelompok 5 (malink handal)
 
 class GreedyBot(BaseLogic):
     def __init__(self):
         super().__init__()
         self.directions = [(1, 0), (0, 1), (-1, 0), (0, -1)]
         self.current_direction = 0
+        self.score_logged = False
 
     def next_move(self, board_bot: GameObject, board: Board):
         def distance(a, b):
@@ -42,7 +46,6 @@ class GreedyBot(BaseLogic):
                     return min(all_diamonds, key=lambda x: distance(bot.position, x.position)).position
             return None
 
-        # menghindar dari musuh jika diamond penuh
         enemy_positions = {
             (bot.position.x, bot.position.y)
             for bot in board.bots
@@ -52,7 +55,21 @@ class GreedyBot(BaseLogic):
         diamonds = board_bot.properties.diamonds
         time_left = board_bot.properties.milliseconds_left
 
-        # kalau waktu game mau abis balik ke base
+        #karena pas testing selalu tidak tampil final scorenya tapi scorenya ada ini buat jaga jaga aja 
+        if time_left is not None and time_left < 1500 and not self.score_logged:
+            self.score_logged = True  
+            name = board_bot.properties.name
+            score = board_bot.properties.score
+            diamonds = board_bot.properties.diamonds
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[INFO][{name}] Final Score (early): {score} | Diamonds: {diamonds}")
+            try:
+                with open("greedybot_score.txt", "a") as f:
+                    f.write(f"[{timestamp}] {name} - Score: {score}, Diamonds: {diamonds}\n")
+            except Exception as e:
+                print(f"[ERROR] Gagal menulis skor ke file: {e}")
+
+        # Kalau waktu hampir habis, pulang
         if time_left is not None and time_left < 1500:
             move = try_move(board_bot.properties.base.x, board_bot.properties.base.y)
             if move:
