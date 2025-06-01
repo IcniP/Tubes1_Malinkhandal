@@ -4,7 +4,10 @@ from typing import Optional
 from game.util import get_direction
 import random
 import math
-
+#Muhammad Farisi Suyitno 123140152
+#ali Akbar 123140162
+#Bima Aryaseta 123140177
+#kelompok 5 Malink handal
 class GreedyBot(BaseLogic):
     def __init__(self):
         # arah gerak (kanan, bawah, kiri, atas)
