@@ -97,7 +97,7 @@ Diamonds is a programming challenge. Program a bot and compete to get the highes
 1. To run one bot
 
     ```
-    python main.py --logic Random --email=your_email@example.com --name=your_name --password=your_password --team etimo
+    python main.py --logic GreedyBot --email=your_email@example.com --name=Malinkhandal --password=123456 --team etimo
     ```
 
 2. To run multiple bots simultaneously
